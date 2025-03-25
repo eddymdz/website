@@ -16,9 +16,16 @@ Utilizar la última versión compatible de kubectl evita posibles errores.
 
 Existen los siguientes métodos para instalar kubectl en Linux:
 
-- [Instalación del binario para Linux de kubectl con Curl](#instalación-del-binario-para-linux-de-kubectl-con-curl)
-- [Instalación mediante el administrador de paquetes nativo](#instalación-mediante-el-administrador-de-paquetes-nativo)
-- [Instalación usando otro administrador de paquetes](#instalación-usando-otro-administrador-de-paquetes)
+- [{{% heading "prerequisites" %}}](#-heading-prerequisites-)
+- [Instalar kubectl en Linux](#instalar-kubectl-en-linux)
+  - [Instalación del binario para Linux de kubectl con Curl](#instalación-del-binario-para-linux-de-kubectl-con-curl)
+  - [Instalación mediante el administrador de paquetes nativo](#instalación-mediante-el-administrador-de-paquetes-nativo)
+  - [Instalación usando otro administrador de paquetes](#instalación-usando-otro-administrador-de-paquetes)
+- [Verificar la configuración de kubectl](#verificar-la-configuración-de-kubectl)
+- [Configuraciones opcionales y plugins de kubectl](#configuraciones-opcionales-y-plugins-de-kubectl)
+  - [Habilitar el autocompletado en la shell](#habilitar-el-autocompletado-en-la-shell)
+  - [Instalar el plugin `kubectl convert`](#instalar-el-plugin-kubectl-convert)
+- [{{% heading "whatsnext" %}}](#-heading-whatsnext-)
 
 ### Instalación del binario para Linux de kubectl con Curl
 
@@ -134,15 +141,24 @@ Existen los siguientes métodos para instalar kubectl en Linux:
 2. Descarga la llave pública firmada para los repositorios de Kubernetes. La misma llave firmada es usada para todos los repositorios por lo que se puede obviar la versión en la URL:
 
    ```shell
+   # Si la carpeta `/etc/apt/keyrings` no existe, debería ser creada
+   antes de la ejecución del comando curl, lee la nota a continuación.
+   # sudo mkdir -p -m 755 /etc/apt/keyrings
    curl -fsSL https://pkgs.k8s.io/core:/stable:/{{< param "version" >}}/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+   sudo chmod 644 /etc/apt/keyrings/kubernetes-apt-keyring.gpg # permite que los programas APT sin privilegios puedan leer este anillo de llaves 
    ```
 
-3. Agregar el repositorio apropiado de Kubernetes. Si quieres una versión de Kubernetes diferente a {{< param "version" >}},
+{{< note >}}
+En versiones anteriores a Debian 12 y Ubuntu 22.04, la carpeta /etc/apt/keyrings no existe por defecto y debe crearse antes de ejecutar el comando curl.
+{{< /note >}}
+
+3. Agregar el repositorio `apt` apropiado de Kubernetes. Si quieres una versión de Kubernetes diferente a {{< param "version" >}},
    reemplace {{< param "version" >}} con la versión deseada en el siguiente comando:
 
    ```shell
    # Esto sobrescribe cualquier configuración existente en el archivo /etc/apt/sources.list.d/kubernetes.list
    echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/{{< param "version" >}}/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+   sudo chmod 644 /etc/apt/sources.list.d/kubernetes.list   # ayuda a que herramientas como command-not-found funcionen correctamente
    ```
 
 {{< note >}}
@@ -156,16 +172,12 @@ Para actualizar kubectl a una minor release diferente, se debe reemplazar la ver
    sudo apt-get install -y kubectl
    ```
 
-{{< note >}}
-En versiones anteriores a Debian 12 y Ubuntu 22.04 el directorio `/etc/apt/keyrings` no existe por defecto, puede ser creado usando el comando `sudo mkdir -m 755 /etc/apt/keyrings`
-{{< /note >}}
-
 {{% /tab %}}
 
 {{% tab name="Red Hat-based distributions" %}}
 
 1. Agregar Kubernetes al repositorio `yum`. Si deseas usar una versión de Kubernetes
-   diferente a {{< param "version" >}}, reemplaza {{< param "version" >}} con
+diferente a {{< param "version" >}}, reemplaza {{< param "version" >}} con
    la versión deseada en el siguiente comando:
 
    ```bash
@@ -216,11 +228,42 @@ Para actualizar kubectl a otra versión será necesario modificar la versión en
 antes de ejecutar `zypper update`. Este procedimiento se describe con más detalle en [Changing The Kubernetes Package Repository](/docs/tasks/administer-cluster/kubeadm/change-package-repository/).
 {{< /note >}}
 
-   2. Instalar kubectl usando `zypper`:
+2. Actualiza zypper y confirma la adición del nuevo repositorio:
 
-      ```bash
-      sudo zypper install -y kubectl
-      ```
+   ```bash
+   sudo zypper update
+   ```
+
+   When this message appears, press 't' or 'a':
+
+   ```
+   New repository or package signing key received:
+
+   Repository:       Kubernetes
+   Key Fingerprint:  1111 2222 3333 4444 5555 6666 7777 8888 9999 AAAA
+   Key Name:         isv:kubernetes OBS Project <isv:kubernetes@build.opensuse.org>
+   Key Algorithm:    RSA 2048
+   Key Created:      Thu 25 Aug 2022 01:21:11 PM -03
+   Key Expires:      Sat 02 Nov 2024 01:21:11 PM -03 (expires in 85 days)
+   Rpm Name:         gpg-pubkey-9a296436-6307a177
+
+   Note: Signing data enables the recipient to verify that no modifications occurred after the data
+   were signed. Accepting data with no, wrong or unknown signature can lead to a corrupted system
+   and in extreme cases even to a system compromise.
+
+   Note: A GPG pubkey is clearly identified by its fingerprint. Do not rely on the key's name. If
+   you are not sure whether the presented key is authentic, ask the repository provider or check
+   their web site. Many providers maintain a web page showing the fingerprints of the GPG keys they
+   are using.
+
+   Do you want to reject the key, trust temporarily, or trust always? [r/t/a/?] (r): a
+   ```
+
+3. Instalar kubectl usando `zypper`:
+
+   ```bash
+   sudo zypper install -y kubectl
+   ```
 
 {{% /tab %}}
 {{< /tabs >}}
@@ -261,7 +304,7 @@ kubectl version --client
 
 ### Habilitar el autocompletado en la shell
 
-Kubectl tiene soporte para autocompletar en Bash, Zsh, Fish y Powershell,
+kubectl tiene soporte para autocompletar en Bash, Zsh, Fish y Powershell,
 lo que puede agilizar el tipeo.
 
 A continuación están los procedimientos para configurarlo en Bash, Fish y Zsh.
